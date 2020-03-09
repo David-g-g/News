@@ -23,7 +23,7 @@ Test assertions.I like to do the assertions in this format.
 Mock framework. Avoids having to create your own mocks.
 
 # Requirements
-.net framework 3.1
+.net core >= 3.1
 
 # Test
 In root folder, execute:
