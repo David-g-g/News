@@ -6,85 +6,74 @@ using NSubstitute;
 using AngleSharp;
 using System.Threading.Tasks;
 using System.Linq;
+using AngleSharp.Dom;
+using System.Collections.Generic;
 
 namespace Scrapper.Tests.Unit
 {
-    public class HackerNewsProviderTests: IAsyncLifetime
+    public class HackerNewsProviderTests
     {
         private IAngleSharpPageLoader pageLoader;
-        private INewsParser hackerNewsFieldsParser;
+        private IHtmlDocumentParser hackerNewsHtmlDocumentParser;
+        private HackerNewsProvider newsProvider;
 
-         HackerNewsProvider newsProvider;
-
-        public Task DisposeAsync()
+        public HackerNewsProviderTests()
         {
-            return Task.FromResult(true);           
-        }
-
-        public async Task InitializeAsync()
-        {
-            var html = await File.ReadAllTextAsync("./hackernewsHtml.html");
-            var context = BrowsingContext.New(Configuration.Default);
-            var document = await context.OpenAsync(req => req.Content(html));
             pageLoader = NSubstitute.Substitute.For<IAngleSharpPageLoader>();
-            pageLoader.LoadPage(Arg.Any<string>()).Returns(document);
-            hackerNewsFieldsParser = Substitute.For<INewsParser>();
-            hackerNewsFieldsParser.ParseTitle(Arg.Any<string>()).Returns("Title");
-            hackerNewsFieldsParser.ParseUser(Arg.Any<string>()).Returns("User");
-            hackerNewsFieldsParser.TryParseUrl(Arg.Any<string>(), out Arg.Any<Uri>())
-                                   .Returns(x => {  
-                                       x[1] = new Uri("http://test.com");
-                                       return true; });
-            hackerNewsFieldsParser.TryParsePoints(Arg.Any<string>(), out Arg.Any<int>())
-                                   .Returns(x => {  
-                                       x[1] = 10;
-                                       return true; });
-            hackerNewsFieldsParser.TryParseRank(Arg.Any<string>(), out Arg.Any<int>())
-                                   .Returns(x => {  
-                                       x[1] = 20;
-                                       return true; });
-            hackerNewsFieldsParser.TryParseComments(Arg.Any<string>(), out Arg.Any<int>())
-                                   .Returns(x => {  
-                                       x[1] = 30;
-                                       return true; });
-
-            newsProvider = new HackerNewsProvider(pageLoader, hackerNewsFieldsParser);
-
-        }
-
-        [Fact]
-        public async Task GivenNews_WhenGetNewsIsCalled_ThenNewsAreReturned()
-        {
-            var newsProvider = new HackerNewsProvider(pageLoader, hackerNewsFieldsParser);
-            var news = await newsProvider.GetNews(1);
-
-            news.First().Should().BeEquivalentTo (new NewsItem{
-                Id="22504106",
-                Title = "Title",
-                User = "User",
-                Points = 10,
-                Rank = 20,
-                Comments = 30,
-                Url = new Uri("http://test.com") 
-            });
+            hackerNewsHtmlDocumentParser = Substitute.For<IHtmlDocumentParser>();
+            newsProvider = new HackerNewsProvider(pageLoader, hackerNewsHtmlDocumentParser);
         }
 
         [Fact]
         public async Task GivenNumberOfRequestedNews_WhenGetNewsIsCalled_ThenNumberOfRequestedNewsAreReturned()
         {
-            var numberOfNews = 20;
+            var numberOfNews = 2;
+            var document = Substitute.For<IDocument>();
+            pageLoader.LoadPage(Arg.Is<string>(s => s.Contains("p=1"))).Returns(document);
+
+            hackerNewsHtmlDocumentParser.ParseNews(document)
+                                        .Returns(new List<NewsItem> { new NewsItem(), new NewsItem(), new NewsItem() });
+
             var news = await newsProvider.GetNews(numberOfNews);
-            
-            news.Count.Should().Be(20);
+
+            news.Count.Should().Be(numberOfNews);
         }
 
         [Fact]
         public async Task GivenNumberOfRequestedNewsIsMoreThanOnePage_WhenGetNewsIsCalled_ThenNumberOfRequestedNewsAreReturned()
         {
-            var numberOfNews = 60;
+            var numberOfNews = 4;
+            var document1 = Substitute.For<IDocument>();
+            var document2 = Substitute.For<IDocument>();
+            pageLoader.LoadPage(Arg.Is<string>(s => s.Contains("p=1"))).Returns(document1);
+            pageLoader.LoadPage(Arg.Is<string>(s => s.Contains("p=2"))).Returns(document2);
+
+            hackerNewsHtmlDocumentParser.ParseNews(document1)
+                                        .Returns(new List<NewsItem> { new NewsItem { Id = "1" }, new NewsItem { Id = "2" }, new NewsItem { Id = "3" } });
+
+            hackerNewsHtmlDocumentParser.ParseNews(document2)
+                                        .Returns(new List<NewsItem> { new NewsItem { Id = "4" }, new NewsItem { Id = "5" }, new NewsItem { Id = "6" } });
+
             var news = await newsProvider.GetNews(numberOfNews);
-            
+
             news.Count.Should().Be(numberOfNews);
+
+            news.Select(n => n.Id).ToList().Should().BeEquivalentTo(new string[] { "1", "2", "3", "4" });
+        }
+
+         [Fact]
+        public async Task GivenNotEnoughNews_WhenGetNewsIsCalled_ThenNumberOfAvailableNewsAreReturned()
+        {
+            var numberOfNews = 10;
+            var document = Substitute.For<IDocument>();
+            pageLoader.LoadPage(Arg.Is<string>(s => s.Contains("p=1"))).Returns(document);
+
+            hackerNewsHtmlDocumentParser.ParseNews(document)
+                                        .Returns(new List<NewsItem> { new NewsItem(), new NewsItem(), new NewsItem() });
+
+            var news = await newsProvider.GetNews(numberOfNews);
+
+            news.Count.Should().Be(3);
         }
     }
 }

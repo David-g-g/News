@@ -16,20 +16,27 @@ namespace Scrapper
 
         static void Main(string[] args)
         {
-            Parser.Default.ParseArguments<Options>(args)
-            .WithParsed<Options>(o =>
+            try
             {
-                _serviceProvider = IocStartup.RegisterServices();
+                Parser.Default.ParseArguments<Options>(args)
+                            .WithParsed<Options>(o =>
+                            {
+                                _serviceProvider = IocStartup.RegisterServices();
 
-                var query = _serviceProvider.GetService<IQuery<GetNewsQueryParam, GetNewsQueryResponse>>();
+                                var query = _serviceProvider.GetService<IQuery<GetNewsQueryParam, GetNewsQueryResponse>>();
 
-                var news = query.Execute(new GetNewsQueryParam { PostNumber = o.Posts })
-                                .GetAwaiter()
-                                .GetResult();
+                                var news = query.Execute(new GetNewsQueryParam { PostNumber = o.Posts })
+                                                .GetAwaiter()
+                                                .GetResult();
 
-                Console.WriteLine(JsonSerializer.Serialize(news, new JsonSerializerOptions { WriteIndented = true }));
-            });
-        }        
+                                Console.WriteLine(JsonSerializer.Serialize(news, new JsonSerializerOptions { WriteIndented = true }));
+                            });
+            } catch (Exception ex)
+            {
+                Console.WriteLine ("There was a problem with the application");
+                Console.WriteLine (ex);
+            }
+        }
     }
 }
 

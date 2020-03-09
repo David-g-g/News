@@ -11,7 +11,8 @@ namespace Scrapper
             collection.AddScoped<INewsParser, NewsParser>();
             collection.AddScoped<IAngleSharpPageLoader, AngleSharpPageLoader>();
             collection.AddScoped<INewsProvider, HackerNewsProvider>();
-            collection.AddScoped<IQuery<GetNewsQueryParam, GetNewsQueryResponse>, GetNewsQuery>();
+            collection.AddScoped<IHtmlDocumentParser, HackerNewsHtmlDocumentParser>();
+            collection.AddScoped<IQuery<GetNewsQueryParam, GetNewsQueryResponse>, GetNewsQuery>();            
 
             return collection.BuildServiceProvider();
         }
