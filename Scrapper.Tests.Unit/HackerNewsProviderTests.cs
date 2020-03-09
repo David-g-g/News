@@ -59,7 +59,7 @@ namespace Scrapper.Tests.Unit
             var news = await newsProvider.GetNews(1);
 
             news.First().Should().BeEquivalentTo (new NewsItem{
-                Id="1",
+                Id="22504106",
                 Title = "Title",
                 User = "User",
                 Points = 10,
@@ -84,7 +84,7 @@ namespace Scrapper.Tests.Unit
             var numberOfNews = 60;
             var news = await newsProvider.GetNews(numberOfNews);
             
-            news.Count.Should().Be(20);
+            news.Count.Should().Be(numberOfNews);
         }
     }
 }
